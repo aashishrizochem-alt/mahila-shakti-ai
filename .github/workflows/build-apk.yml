@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout project
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Unzip project
+      - name: Extract project
         run: |
           mkdir -p project
           unzip -q mahila-shakti-ai-no-gemini.zip -d project
@@ -24,37 +24,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Locate Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          which sdkmanager || true
+          find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -5 || true
 
       - name: Accept Android SDK licenses
         run: |
-          yes | sdkmanager --licenses || true
-
-      - name: Install Android SDK
-        run: |
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Find Gradle wrapper
-        run: |
-          GRADLEW=$(find project -name gradlew -type f | head -1)
-          if [ -z "$GRADLEW" ]; then
-            echo "gradlew not found"
+          SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
             exit 1
           fi
-          chmod +x "$GRADLEW"
-          echo "GRADLEW=$GRADLEW" >> "$GITHUB_ENV"
-          echo "Found: $GRADLEW"
+          yes | "$SDKMANAGER" --licenses || true
 
-      - name: Build APK
+      - name: Install Android SDK packages
         run: |
-          cd "$(dirname "$GRADLEW")"
-          ./gradlew assembleDebug --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: mahila-shakti-ai-debug-apk
-          path: |
-            project/**/build/outputs/apk/**/*.apk
-          if-no-files-found: error
+          SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager
