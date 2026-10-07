@@ -13,6 +13,7 @@ jobs:
 
       - name: Unzip project
         run: |
+          mkdir project
           unzip -q mahila-shakti-ai-no-gemini.zip -d project
           echo "Project extracted"
           find project -maxdepth 3 -type f | head -80
@@ -23,28 +24,26 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Find Android project
+      - name: Install Android SDK
         run: |
-          GRADLEW=$(find project -name gradlew -type f | head -1)
-          if [ -z "$GRADLEW" ]; then
-            echo "gradlew not found"
-            exit 1
-          fi
-          chmod +x "$GRADLEW"
-          echo "GRADLEW=$GRADLEW" >> "$GITHUB_ENV"
-          echo "Found: $GRADLEW"
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Build debug APK
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.2.2'
+
+      - name: Build APK
         run: |
-          cd "$(dirname "$GRADLEW")"
-          ./gradlew assembleDebug --no-daemon
+          cd project/android
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: mahila-shakti-ai-debug-apk
-          path: |
-            project/**/build/outputs/apk/**/*.apk
+          path: project/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
